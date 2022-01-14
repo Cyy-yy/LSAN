@@ -1,18 +1,27 @@
 import numpy as np
 from tqdm import tqdm
+
+
 def train(attention_model,train_loader,test_loader,criterion,opt,epochs = 5,GPU=True):
+    """
+    :criterion: loss function
+    :opt: optimizer
+    """
     if GPU:
         attention_model.cuda()
     for i in range(epochs):
         print("Running EPOCH",i+1)
-        train_loss = []
-        prec_k = []
-        ndcg_k = []
+        """
+        Training Stage
+        """
+        train_loss = []  # store loss of each batch
+        prec_k = []  # a evaluation metric
+        ndcg_k = []  # another evaluation metric
         for batch_idx, train in enumerate(tqdm(train_loader)):
             opt.zero_grad()
             x, y = train[0].cuda(), train[1].cuda()
             y_pred= attention_model(x)
-            loss = criterion(y_pred, y.float())/train_loader.batch_size
+            loss = criterion(y_pred, y.float())/train_loader.batch_size  # why devide by batch_size
             loss.backward()
             opt.step()
             labels_cpu = y.data.cpu().float()
@@ -22,18 +31,23 @@ def train(attention_model,train_loader,test_loader,criterion,opt,epochs = 5,GPU=
             ndcg = Ndcg_k(labels_cpu.numpy(), pred_cpu.numpy(), 5)
             ndcg_k.append(ndcg)
             train_loss.append(float(loss))
-        avg_loss = np.mean(train_loss)
+        avg_loss = np.mean(train_loss)  # average loss of each epoch
         epoch_prec = np.array(prec_k).mean(axis=0)
         epoch_ndcg = np.array(ndcg_k).mean(axis=0)
         print("epoch %2d train end : avg_loss = %.4f" % (i+1, avg_loss))
         print("precision@1 : %.4f , precision@3 : %.4f , precision@5 : %.4f " % (epoch_prec[0], epoch_prec[2], epoch_prec[4]))
         print("ndcg@1 : %.4f , ndcg@3 : %.4f , ndcg@5 : %.4f " % (epoch_ndcg[0], epoch_ndcg[2], epoch_ndcg[4]))
+        
+        """
+        Evalutation Stage
+        """
         test_acc_k = []
         test_loss = []
         test_ndcg_k = []
         for batch_idx, test in enumerate(tqdm(test_loader)):
             x, y = test[0].cuda(), test[1].cuda()
-            val_y= attention_model(x)
+            with torch.no_grad():
+                val_y= attention_model(x)
             loss = criterion(val_y, y.float()) /train_loader.batch_size
             labels_cpu = y.data.cpu().float()
             pred_cpu = val_y.data.cpu()
@@ -47,12 +61,14 @@ def train(attention_model,train_loader,test_loader,criterion,opt,epochs = 5,GPU=
         test_prec = np.array(test_acc_k).mean(axis=0)
         test_ndcg = np.array(test_ndcg_k).mean(axis=0)
         print("epoch %2d test end : avg_loss = %.4f" % (i+1, avg_test_loss))
-        print("precision@1 : %.4f , precision@3 : %.4f , precision@5 : %.4f " % (
-        test_prec[0], test_prec[2], test_prec[4]))
+        print("precision@1 : %.4f , precision@3 : %.4f , precision@5 : %.4f " % (test_prec[0], test_prec[2], test_prec[4]))
         print("ndcg@1 : %.4f , ndcg@3 : %.4f , ndcg@5 : %.4f " % (test_ndcg[0], test_ndcg[2], test_ndcg[4]))
 
 
 def precision_k(true_mat, score_mat, k):
+    """
+    Top k precision
+    """
     p = np.zeros((k, 1))
     rank_mat = np.argsort(score_mat)
     backup = np.copy(score_mat)
@@ -68,7 +84,11 @@ def precision_k(true_mat, score_mat, k):
         p[k] = np.mean(num / (k + 1))
     return np.around(p, decimals=4)
 
+
 def Ndcg_k(true_mat, score_mat, k):
+    """
+    Another metric, know nothing for detail for now
+    """
     res = np.zeros((k, 1))
     rank_mat = np.argsort(score_mat)
     backup = np.copy(score_mat)
@@ -86,7 +106,12 @@ def Ndcg_k(true_mat, score_mat, k):
         ndcg = np.mean(dcg / factor)
         res[m] = ndcg
     return np.around(res, decimals=4)
+
+
 def get_factor(label_count,k):
+    """
+    Used in Ndcg_k() function
+    """
     res=[]
     for i in range(len(label_count)):
         n=int(min(label_count[i],k))
