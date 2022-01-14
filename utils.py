@@ -1,7 +1,7 @@
 import os
 import csv
 import codecs
-import yaml
+import yaml  # yaml is a file type which is specifically used to store configuration
 import time
 import numpy as np
 
@@ -9,17 +9,26 @@ from sklearn import metrics
 
 
 class AttrDict(dict):
+    """
+    Seems this step is not necessary
+    """
     def __init__(self, *args, **kwargs):
         super(AttrDict, self).__init__(*args, **kwargs)
         self.__dict__ = self
 
 
 def read_config(path):
-
+    """
+    Load the configuration (in yaml type) file
+    Return a dict
+    """
     return AttrDict(yaml.load(open(path, 'r')))
 
 
 def read_datas(filename, trans_to_num=False):
+    """
+    Load datast
+    """
     lines = open(filename, 'r').readlines()
     lines = list(map(lambda x: x.split(), lines))
     if trans_to_num:
@@ -28,6 +37,9 @@ def read_datas(filename, trans_to_num=False):
 
 
 def save_datas(data, filename, trans_to_str=False):
+    """
+    Save dataset
+    """
     if trans_to_str:
         data = [list(map(str, line)) for line in data]
     lines = list(map(lambda x: " ".join(x), data))
@@ -36,6 +48,9 @@ def save_datas(data, filename, trans_to_str=False):
 
 
 def logging(file):
+    """
+    Store logging file
+    """
     def write_log(s):
         print(s, end='')
         with open(file, 'a') as f:
@@ -44,6 +59,9 @@ def logging(file):
 
 
 def logging_csv(file):
+    """
+    Store logging file as CSV
+    """
     def write_csv(s):
         with open(file, 'a', newline='') as f:
             writer = csv.writer(f)
@@ -52,6 +70,9 @@ def logging_csv(file):
 
 
 def format_time(t):
+    """
+    Formatting date
+    """
     return time.strftime("%Y-%m-%d-%H:%M:%S", t)
 
 
